@@ -36,6 +36,7 @@ export default function CreatePollForm({ userId }: { userId: string }) {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [isPollCreated, setIsPollCreated] = useState(false);
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
@@ -69,13 +70,20 @@ export default function CreatePollForm({ userId }: { userId: string }) {
       }
 
       console.log('Poll created successfully:', poll);
-      // Optionally, redirect or show a success message
+      setIsPollCreated(true);
     }
     setIsLoading(false);
   };
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-md mx-auto">
+      {isPollCreated && (
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+          <strong className="font-bold">Success!</strong>
+          <span className="block sm:inline"> Poll created successfully!</span>
+        </div>
+      )}
+
       <Card>
         <CardHeader>
           <h2 className="text-2xl font-bold">Create New Poll</h2>

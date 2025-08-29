@@ -1,11 +1,8 @@
 import './globals.css';
 import { createServerClient } from '@supabase/ssr';
-import { type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
-
-
-import Link from 'next/link';
-import LogoutButton from '@/components/auth/LogoutButton';
+import { type CookieOptions } from '@supabase/ssr';
+import Header from '@/components/layout/Header';
 
 export const metadata = {
   title: 'Polling App',
@@ -15,47 +12,30 @@ export const metadata = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
 
 
+  const cookieStore = await cookies();
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get: async (name: string) => (await cookies()).get(name)?.value,
-        set: async (name: string, value: string, options: CookieOptions) => {
-          (await cookies()).set(name, value, options);
+        getAll() {
+          return cookieStore.getAll().map((cookie) => ({ name: cookie.name, value: cookie.value }));
         },
-        remove: async (name: string) => {
-          (await cookies()).delete(name);
+        setAll(cookiesToSet: Array<{ name: string; value: string; options: any }>) {
+          cookiesToSet.forEach(({ name, value, options }) => cookieStore.set(name, value, options));
         },
       },
     }
   );
 
-  const { data: { session } } = await supabase.auth.getSession();
+  const { data: { user: session } } = await supabase.auth.getUser();
 
   return (
     <html lang="en">
-      <body>
-        <header className="bg-gray-800 text-white p-4 flex justify-between items-center">
-          <h1 className="text-xl font-bold">Polling App</h1>
-          <nav>
-            {!session ? (
-              <>
-                <Link href="/login" className="mr-4 hover:text-gray-300">Login</Link>
-                <Link href="/signup" className="hover:text-gray-300">Sign Up</Link>
-              </>
-            ) : (
-              <>
-                <Link href="/dashboard" className="mr-4 hover:text-gray-300">Dashboard</Link>
-                <Link href="/profile" className="mr-4 hover:text-gray-300">Profile</Link>
-                <LogoutButton />
-              </>
-            )}
-          </nav>
-        </header>
-        <main className="container mx-auto p-4">
-          {children}
-        </main>
+      <body className="bg-blue-100">
+        <Header session={session} />
+        {children}
       </body>
     </html>
   );
