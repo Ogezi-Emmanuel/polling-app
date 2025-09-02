@@ -22,7 +22,7 @@ export default function CreatePollForm({ userId }: { userId: string }) {
 
   type FormData = z.infer<typeof formSchema>;
 
-  const { register, handleSubmit, control, formState: { errors } } = useForm<FormData>({
+  const { register, handleSubmit, control, reset, formState: { errors } } = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       question: '',
@@ -37,6 +37,7 @@ export default function CreatePollForm({ userId }: { userId: string }) {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isPollCreated, setIsPollCreated] = useState(false);
+  const [newPollId, setNewPollId] = useState<string | null>(null);
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
@@ -71,6 +72,8 @@ export default function CreatePollForm({ userId }: { userId: string }) {
 
       console.log('Poll created successfully:', poll);
       setIsPollCreated(true);
+      setNewPollId(pollId);
+      reset(); // Reset the form after successful submission
     }
     setIsLoading(false);
   };
@@ -81,6 +84,11 @@ export default function CreatePollForm({ userId }: { userId: string }) {
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
           <strong className="font-bold">Success!</strong>
           <span className="block sm:inline"> Poll created successfully!</span>
+          {newPollId && (
+            <p className="mt-2">
+              Share your poll: <a href={`/poll/${newPollId}`} className="text-blue-600 hover:underline">{`/poll/${newPollId}`}</a>
+            </p>
+          )}
         </div>
       )}
 

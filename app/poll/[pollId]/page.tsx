@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
 import { createClient } from '@/lib/supabase/client';
+import { submitVote } from '@/lib/actions';
 
 interface PollOption {
   id: string;
@@ -27,7 +28,6 @@ export default function PollPage({ params }: { params: { pollId: string } }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
-  const [hasVoted, setHasVoted] = useState(false);
 
   useEffect(() => {
     async function fetchPoll() {
@@ -75,30 +75,15 @@ export default function PollPage({ params }: { params: { pollId: string } }) {
   const handleVote = async () => {
     if (!selectedOption || !poll) return;
 
-    setLoading(true);
-    setError(null);
+    const { success, error: voteError } = await submitVote(selectedOption, poll.id);
 
-    const { error: voteError } = await supabase
-      .from('votes')
-      .insert({ option_id: selectedOption, poll_id: poll.id });
-
-    if (voteError) {
+    if (success) {
+      router.push(`/poll/${poll.id}/thank-you`);
+    } else {
       console.error('Error casting vote:', voteError);
       setError('Failed to cast vote.');
-    } else {
-      router.push(`/poll/${poll.id}/thank-you`);
     }
-    setLoading(false);
   };
-
-  if (hasVoted) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen py-2">
-        <h1 className="text-4xl font-bold mb-8">Thank you for voting!</h1>
-        <Button onClick={() => window.location.href = '/my-polls'}>View My Polls</Button>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
