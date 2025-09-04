@@ -1,13 +1,11 @@
 'use client';
 
-'use client';
-
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,9 +21,8 @@ type LoginFormValues = z.infer<typeof formSchema>;
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [supabase, setSupabase] = useState<any>(null);
   const router = useRouter();
-  const supabase = createClient();
-
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -34,7 +31,17 @@ export default function LoginPage() {
     },
   });
 
+  useEffect(() => {
+    const initSupabase = async () => {
+      const client = await getSupabaseClient();
+      setSupabase(client);
+    };
+    initSupabase();
+  }, []);
+
   const onSubmit = async (values: LoginFormValues) => {
+    if (!supabase) return;
+    
     setError(null);
     setLoading(true);
 
@@ -90,7 +97,7 @@ export default function LoginPage() {
             </div>
             {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
             <CardFooter className="flex justify-end p-0">
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading || !supabase}>
                 {loading ? 'Signing In...' : 'Sign In'}
               </Button>
             </CardFooter>

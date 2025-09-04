@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -21,16 +21,26 @@ interface Poll {
 
 export default function EditPollPage({ params }: { params: Promise<{ pollId: string }> }) {
   const router = useRouter();
-  const supabase = createClient();
   const { pollId } = React.use(params);
 
   const [poll, setPoll] = useState<Poll | null>(null);
   const [originalOptions, setOriginalOptions] = useState<PollOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [supabase, setSupabase] = useState<any>(null);
+
+  useEffect(() => {
+    const initSupabase = async () => {
+      const client = await getSupabaseClient();
+      setSupabase(client);
+    };
+    initSupabase();
+  }, []);
 
   useEffect(() => {
     async function fetchPoll() {
+      if (!supabase) return;
+      
       const { data, error } = await supabase
         .from('polls')
         .select(`
@@ -53,7 +63,9 @@ export default function EditPollPage({ params }: { params: Promise<{ pollId: str
       setLoading(false);
     }
 
-    fetchPoll();
+    if (supabase) {
+      fetchPoll();
+    }
   }, [pollId, supabase]);
 
   const handleQuestionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -93,7 +105,7 @@ export default function EditPollPage({ params }: { params: Promise<{ pollId: str
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!poll) return;
+    if (!poll || !supabase) return;
 
     setLoading(true);
     setError(null);
@@ -111,37 +123,37 @@ export default function EditPollPage({ params }: { params: Promise<{ pollId: str
     }
 
     // First, upsert all current options
-for (const option of poll.options) {
-  const { error: upsertOptionError } = await supabase
-    .from('options')
-    .upsert({ id: option.id, text: option.text, poll_id: poll.id }, { onConflict: 'id' });
+    for (const option of poll.options) {
+      const { error: upsertOptionError } = await supabase
+        .from('options')
+        .upsert({ id: option.id, text: option.text, poll_id: poll.id }, { onConflict: 'id' });
 
-  if (upsertOptionError) {
-    console.error('Error upserting option:', upsertOptionError);
-    setError(`Failed to update option ${option.text}.`);
-    setLoading(false);
-    return;
-  }
-}
+      if (upsertOptionError) {
+        console.error('Error upserting option:', upsertOptionError);
+        setError(`Failed to update option ${option.text}.`);
+        setLoading(false);
+        return;
+      }
+    }
 
-// Then, delete any options that were removed
-const removedOptions = originalOptions.filter(
-  originalOption => !poll.options.some(option => option.id === originalOption.id)
-);
+    // Then, delete any options that were removed
+    const removedOptions = originalOptions.filter(
+      originalOption => !poll.options.some(option => option.id === originalOption.id)
+    );
 
-for (const option of removedOptions) {
-  const { error: deleteError } = await supabase
-    .from('options')
-    .delete()
-    .eq('id', option.id);
+    for (const option of removedOptions) {
+      const { error: deleteError } = await supabase
+        .from('options')
+        .delete()
+        .eq('id', option.id);
 
-  if (deleteError) {
-    console.error('Error deleting removed option:', deleteError);
-    setError(`Failed to delete removed option ${option.text}.`);
-    setLoading(false);
-    return;
-  }
-}
+      if (deleteError) {
+        console.error('Error deleting removed option:', deleteError);
+        setError(`Failed to delete removed option ${option.text}.`);
+        setLoading(false);
+        return;
+      }
+    }
 
     setLoading(false);
     router.push('/my-polls');
@@ -192,7 +204,7 @@ for (const option of removedOptions) {
             Add Option
           </Button>
         </div>
-        <Button type="submit" className="w-full" disabled={loading}>
+        <Button type="submit" className="w-full" disabled={loading || !supabase}>
           {loading ? 'Saving...' : 'Save Changes'}
         </Button>
       </form>

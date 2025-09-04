@@ -5,8 +5,8 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { createClient } from '@/lib/supabase/client';
-import { submitVote } from '@/lib/actions';
+import { getSupabaseClient } from '@/lib/supabase';
+import { submitVote } from '@/lib/votes';
 
 interface PollOption {
   id: string;
@@ -20,7 +20,6 @@ interface Poll {
 }
 
 export default function PollPage({ params }: { params: { pollId: string } }) {
-  const supabase = createClient();
   const router = useRouter();
   const { pollId } = params;
 
@@ -28,9 +27,20 @@ export default function PollPage({ params }: { params: { pollId: string } }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedOption, setSelectedOption] = useState<string | null>(null);
+  const [supabase, setSupabase] = useState<any>(null);
+
+  useEffect(() => {
+    const initSupabase = async () => {
+      const client = await getSupabaseClient();
+      setSupabase(client);
+    };
+    initSupabase();
+  }, []);
 
   useEffect(() => {
     async function fetchPoll() {
+      if (!supabase) return;
+      
       const { data, error } = await supabase
         .from('polls')
         .select(`
@@ -52,7 +62,9 @@ export default function PollPage({ params }: { params: { pollId: string } }) {
       setLoading(false);
     }
 
-    fetchPoll();
+    if (supabase) {
+      fetchPoll();
+    }
   }, [pollId, supabase]);
 
   if (loading) {
@@ -75,7 +87,9 @@ export default function PollPage({ params }: { params: { pollId: string } }) {
   const handleVote = async () => {
     if (!selectedOption || !poll) return;
 
-    const { success, error: voteError } = await submitVote(selectedOption, poll.id);
+    const result = await submitVote(selectedOption, poll.id);
+    const success = 'success' in result && result.success;
+    const voteError = 'error' in result ? result.error : undefined;
 
     if (success) {
       router.push(`/poll/${poll.id}/thank-you`);

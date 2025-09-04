@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { createClient } from '@/lib/supabase/client';
+import { getSupabaseClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 
 export default function SignupPage() {
@@ -13,11 +13,21 @@ export default function SignupPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [supabase, setSupabase] = useState<any>(null);
   const router = useRouter();
-  const supabase = createClient();
+
+  useEffect(() => {
+    const initSupabase = async () => {
+      const client = await getSupabaseClient();
+      setSupabase(client);
+    };
+    initSupabase();
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!supabase) return;
+    
     setError(null);
     setLoading(true);
 
@@ -69,7 +79,7 @@ export default function SignupPage() {
             </div>
             {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
             <CardFooter className="flex justify-end mt-6 p-0">
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full" disabled={loading || !supabase}>
                 {loading ? 'Signing Up...' : 'Sign Up'}
               </Button>
             </CardFooter>

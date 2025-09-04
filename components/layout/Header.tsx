@@ -7,7 +7,10 @@ import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 interface HeaderProps {
-  session: any;
+  session: {
+    id: string;
+    email: string;
+  } | null;
 }
 
 export default function Header({ session }: HeaderProps) {

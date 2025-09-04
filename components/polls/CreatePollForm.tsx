@@ -3,7 +3,8 @@
 'use client';
 
 import { useState } from 'react';
-import { createClient } from '@/lib/supabase/client';
+import { createPoll } from '@/lib/actions';
+import { getSupabaseClient } from '@/lib/supabase';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -41,40 +42,23 @@ export default function CreatePollForm({ userId }: { userId: string }) {
 
   const onSubmit = async (data: FormData) => {
     setIsLoading(true);
-    const supabase = createClient();
-    const { data: poll, error } = await supabase
-      .from('polls')
-      .insert({ question: data.question, user_id: userId })
-      .select('id, question');
+    
+    const optionsText = data.options.map(option => option.text);
+    const result = await createPoll(data.question, optionsText, userId);
 
-    if (error) {
-      console.error('Error creating poll:', error);
+    if ('error' in result) {
+      console.error('Error creating poll:', result.error);
       setIsLoading(false);
       return;
     }
 
-    if (poll && poll.length > 0) {
-      const pollId = poll[0].id;
-      const optionsToInsert = data.options.map((option) => ({
-        poll_id: pollId,
-        text: option.text,
-      }));
-
-      const { error: optionsError } = await supabase
-        .from('options')
-        .insert(optionsToInsert);
-
-      if (optionsError) {
-        console.error('Error adding options:', optionsError);
-        setIsLoading(false);
-        return;
-      }
-
-      console.log('Poll created successfully:', poll);
+    if (result.success) {
+      console.log('Poll created successfully:', result.pollId);
       setIsPollCreated(true);
-      setNewPollId(pollId);
+      setNewPollId(result.pollId!);
       reset(); // Reset the form after successful submission
     }
+    
     setIsLoading(false);
   };
 

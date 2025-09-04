@@ -31,10 +31,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   const { data: { user: session } } = await supabase.auth.getUser();
 
+  // Extract only serializable data to pass to client components
+  const serializableSession = session ? {
+    id: session.id,
+    email: session.email,
+    // Add other serializable properties as needed
+  } : null;
+
   return (
     <html lang="en">
       <body className="bg-blue-100">
-        <Header session={session} />
+        <Header session={serializableSession?.email ? { id: serializableSession.id, email: serializableSession.email } : null} />
         {children}
       </body>
     </html>
