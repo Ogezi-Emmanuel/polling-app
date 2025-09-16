@@ -13,6 +13,31 @@ interface PageProps {
   };
 }
 
+async function handleDelete(pollId: string) {
+  'use server';
+  
+  // Validate input
+  const validationResult = deletePollSchema.safeParse({ pollId });
+  if (!validationResult.success) {
+    throw new ValidationError(validationResult.error.format()._errors[0] || 'Invalid input');
+  }
+  
+  // Check rate limit for poll deletion
+  const userIdentifier = await getUserIdentifier();
+  const rateLimitResult = await rateLimit(userIdentifier, {
+    max: 5,
+    windowMs: 60 * 1000,
+    message: 'Too many poll deletions. Please try again later.'
+  });
+  
+  if (!rateLimitResult.success) {
+    throw new RateLimitError(rateLimitResult.message);
+  }
+
+  await PollsService.deletePoll(pollId);
+  revalidatePath('/my-polls');
+}
+
 export default async function MyPollsPage({ searchParams }: PageProps) {
   const supabase = await getSupabaseClient('server');
   const { data: { user } } = await supabase.auth.getUser();
@@ -86,29 +111,4 @@ export default async function MyPollsPage({ searchParams }: PageProps) {
       )}
     </div>
   );
-}
-
-async function handleDelete(pollId: string) {
-  'use server';
-  
-  // Validate input
-  const validationResult = deletePollSchema.safeParse({ pollId });
-  if (!validationResult.success) {
-    throw new ValidationError(validationResult.error.format()._errors[0] || 'Invalid input');
-  }
-  
-  // Check rate limit for poll deletion
-  const userIdentifier = await getUserIdentifier();
-  const rateLimitResult = await rateLimit(userIdentifier, {
-    max: 5,
-    windowMs: 60 * 1000,
-    message: 'Too many poll deletions. Please try again later.'
-  });
-  
-  if (!rateLimitResult.success) {
-    throw new RateLimitError(rateLimitResult.message);
-  }
-
-  await PollsService.deletePoll(pollId);
-  revalidatePath('/my-polls');
 }

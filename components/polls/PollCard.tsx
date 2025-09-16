@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { deletePoll } from '@/app/actions';
 
 interface PollCardProps {
   poll: {
@@ -11,13 +12,12 @@ interface PollCardProps {
     user_id: string;
     created_at: string;
   };
-  onDelete: (pollId: string) => void;
 }
 
-export default function PollCard({ poll, onDelete }: PollCardProps) {
-  const handleDelete = () => {
+export default function PollCard({ poll }: PollCardProps) {
+  const handleDelete = async () => {
     if (window.confirm('Are you sure you want to delete this poll?')) {
-      onDelete(poll.id);
+      await deletePoll(poll.id);
     }
   };
 

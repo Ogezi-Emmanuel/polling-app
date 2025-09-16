@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { getSupabaseClient } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { signInWithPassword } from '@/lib/actions/auth';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -21,7 +21,6 @@ type LoginFormValues = z.infer<typeof formSchema>;
 export default function LoginPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [supabase, setSupabase] = useState<any>(null);
   const router = useRouter();
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(formSchema),
@@ -31,29 +30,14 @@ export default function LoginPage() {
     },
   });
 
-  useEffect(() => {
-    const initSupabase = async () => {
-      const client = await getSupabaseClient();
-      setSupabase(client);
-    };
-    initSupabase();
-  }, []);
-
   const onSubmit = async (values: LoginFormValues) => {
-    if (!supabase) return;
-    
     setError(null);
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: values.email,
-      password: values.password,
-    });
+    const result = await signInWithPassword(values);
 
-    if (error) {
-      setError(error.message);
-    } else if (data.user && !data.user.email_confirmed_at) {
-      setError('Please confirm your email address before logging in.');
+    if (result.error) {
+      setError(result.error);
     } else {
       router.push('/dashboard');
     }
@@ -97,8 +81,8 @@ export default function LoginPage() {
             </div>
             {error && <p className="text-red-500 text-sm mt-4">{error}</p>}
             <CardFooter className="flex justify-end p-0">
-              <Button type="submit" className="w-full" disabled={loading || !supabase}>
-                {loading ? 'Signing In...' : 'Sign In'}
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? 'Logging In...' : 'Login'}
               </Button>
             </CardFooter>
           </form>

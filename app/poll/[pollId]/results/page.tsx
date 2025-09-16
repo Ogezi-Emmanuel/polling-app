@@ -1,15 +1,17 @@
 import { unstable_noStore as noStore } from 'next/cache';
 
-import { supabaseServer } from '@/lib/supabase/server';
+import { supabaseServerReadOnly } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
+import { cookies } from 'next/headers';
 
 export const revalidate = 0;
 
 export default async function PollResultsPage({ params }: { params: { pollId: string } }) {
   noStore();
-  const supabase = await supabaseServer();
+  const cookieStore = cookies();
+  const supabase = await supabaseServerReadOnly();
 
   const { data: poll } = await supabase
     .from('polls')

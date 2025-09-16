@@ -1,9 +1,11 @@
-import { supabaseServer } from '@/lib/supabase/server';
+import { supabaseServerReadOnly } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import CreatePollForm from '@/components/polls/CreatePollForm';
+import { cookies } from 'next/headers';
 
 export default async function CreatePollPage() {
-  const supabase = await supabaseServer();
+  const cookieStore = cookies();
+  const supabase = await supabaseServerReadOnly();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {

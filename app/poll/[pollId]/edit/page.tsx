@@ -1,12 +1,20 @@
 'use client';
 
+import { createBrowserClient } from '@supabase/ssr';
 import React, { useEffect, useState } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { useRouter } from 'next/navigation';
-import { getSupabaseClient } from '@/lib/supabase';
+import { useRouter, useParams } from 'next/navigation';
+// import { getSupabaseClient } from '@/lib/supabase';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { createClient } from '@/lib/supabase/client';
+
+// Initialize Supabase client
+// const supabase = createBrowserClient(
+//   process.env.NEXT_PUBLIC_SUPABASE_URL!,
+//   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// );
 
 interface PollOption {
   id: string;
@@ -19,28 +27,17 @@ interface Poll {
   options: PollOption[];
 }
 
-export default function EditPollPage({ params }: { params: Promise<{ pollId: string }> }) {
+export default function EditPollPage() {
   const router = useRouter();
-  const { pollId } = React.use(params);
+  const { pollId } = useParams<{ pollId: string }>();
 
   const [poll, setPoll] = useState<Poll | null>(null);
   const [originalOptions, setOriginalOptions] = useState<PollOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [supabase, setSupabase] = useState<any>(null);
-
-  useEffect(() => {
-    const initSupabase = async () => {
-      const client = await getSupabaseClient();
-      setSupabase(client);
-    };
-    initSupabase();
-  }, []);
-
+  const supabase = createClient();
   useEffect(() => {
     async function fetchPoll() {
-      if (!supabase) return;
-      
       const { data, error } = await supabase
         .from('polls')
         .select(`
@@ -55,18 +52,15 @@ export default function EditPollPage({ params }: { params: Promise<{ pollId: str
         console.error('Error fetching poll:', error);
         setError('Failed to load poll.');
       } else if (data) {
+        console.log('Fetched poll data:', data);
         setPoll(data);
         setOriginalOptions(data.options);
-      } else {
-        setError('Poll not found.');
       }
       setLoading(false);
     }
 
-    if (supabase) {
-      fetchPoll();
-    }
-  }, [pollId, supabase]);
+    fetchPoll();
+  }, [pollId]);
 
   const handleQuestionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (poll) {
@@ -105,55 +99,55 @@ export default function EditPollPage({ params }: { params: Promise<{ pollId: str
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!poll || !supabase) return;
+    if (!poll) return;
 
     setLoading(true);
     setError(null);
 
-    const { error: updatePollError } = await supabase
-      .from('polls')
-      .update({ question: poll.question })
-      .eq('id', poll.id);
+    // const { error: updatePollError } = await supabase
+    //   .from('polls')
+    //   .update({ question: poll.question })
+    //   .eq('id', poll.id);
 
-    if (updatePollError) {
-      console.error('Error updating poll question:', updatePollError);
-      setError('Failed to update poll question.');
-      setLoading(false);
-      return;
-    }
+    // if (updatePollError) {
+    //   console.error('Error updating poll question:', updatePollError);
+    //   setError('Failed to update poll question.');
+    //   setLoading(false);
+    //   return;
+    // }
 
-    // First, upsert all current options
-    for (const option of poll.options) {
-      const { error: upsertOptionError } = await supabase
-        .from('options')
-        .upsert({ id: option.id, text: option.text, poll_id: poll.id }, { onConflict: 'id' });
+    // // First, upsert all current options
+    // for (const option of poll.options) {
+    //   const { error: upsertOptionError } = await supabase
+    //     .from('options')
+    //     .upsert({ id: option.id, text: option.text, poll_id: poll.id }, { onConflict: 'id' });
 
-      if (upsertOptionError) {
-        console.error('Error upserting option:', upsertOptionError);
-        setError(`Failed to update option ${option.text}.`);
-        setLoading(false);
-        return;
-      }
-    }
+    //   if (upsertOptionError) {
+    //     console.error('Error upserting option:', upsertOptionError);
+    //     setError(`Failed to update option ${option.text}.`);
+    //     setLoading(false);
+    //     return;
+    //   }
+    // }
 
-    // Then, delete any options that were removed
-    const removedOptions = originalOptions.filter(
-      originalOption => !poll.options.some(option => option.id === originalOption.id)
-    );
+    // // Then, delete any options that were removed
+    // const removedOptions = originalOptions.filter(
+    //   originalOption => !poll.options.some(option => option.id === originalOption.id)
+    // );
 
-    for (const option of removedOptions) {
-      const { error: deleteError } = await supabase
-        .from('options')
-        .delete()
-        .eq('id', option.id);
+    // for (const option of removedOptions) {
+    //   const { error: deleteError } = await supabase
+    //     .from('options')
+    //     .delete()
+    //     .eq('id', option.id);
 
-      if (deleteError) {
-        console.error('Error deleting removed option:', deleteError);
-        setError(`Failed to delete removed option ${option.text}.`);
-        setLoading(false);
-        return;
-      }
-    }
+    //   if (deleteError) {
+    //     console.error('Error deleting removed option:', deleteError);
+    //     setError(`Failed to delete removed option ${option.text}.`);
+    //     setLoading(false);
+    //     return;
+    //   }
+    // }
 
     setLoading(false);
     router.push('/my-polls');
@@ -204,7 +198,7 @@ export default function EditPollPage({ params }: { params: Promise<{ pollId: str
             Add Option
           </Button>
         </div>
-        <Button type="submit" className="w-full" disabled={loading || !supabase}>
+        <Button type="submit" className="w-full" disabled={loading}>
           {loading ? 'Saving...' : 'Save Changes'}
         </Button>
       </form>
