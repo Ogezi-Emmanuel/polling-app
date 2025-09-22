@@ -1,86 +1,73 @@
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { submitVote, hasUserVoted, getVoteCountsForPoll } from "./services/votes";
-import { describe, test, expect, beforeAll, afterAll, beforeEach, vi } from 'vitest';
-import { createServerActionClient } from '@supabase/auth-helpers-nextjs';
+import { createClient } from '@supabase/supabase-js';
+import { submitVote } from './votes';
+import { Database } from '@/lib/database.types';
+import { describe, beforeAll, afterEach, it, expect } from 'vitest';
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  throw new Error('Supabase environment variables are not loaded');
-}
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-
-let serviceRoleClient: SupabaseClient;
-
-beforeAll(() => {
-  serviceRoleClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
-    },
-  });
-});
-
-describe('submitVote (Integration)', () => {
-  let pollId: string;
-  let optionId: number;
+describe('submitVote', () => {
+  let supabase: ReturnType<typeof createClient<Database>>;
+  let supabaseServiceRole: ReturnType<typeof createClient<Database>>;
 
   beforeAll(async () => {
-    await serviceRoleClient.from('votes').delete().neq('id', '0');
-    await serviceRoleClient.from('options').delete().neq('id', '0');
-    await serviceRoleClient.from('polls').delete().neq('id', '0');
-
-    const { data: poll, error: pollError } = await serviceRoleClient.from('polls').insert({
-      question: 'Integration Test Poll',
-    }).select().single();
-
-    if (pollError) {
-      throw pollError;
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY || !SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error('Supabase environment variables not loaded for integration tests.');
     }
-    pollId = poll.id;
+    supabase = createClient<Database>(
+      SUPABASE_URL,
+      SUPABASE_ANON_KEY,
+      {
+        auth: {
+          persistSession: false,
+          storage: {
+            getItem: () => Promise.resolve(null),
+            setItem: () => Promise.resolve(),
+            removeItem: () => Promise.resolve(),
+          },
+        },
+      }
+    );
+    supabaseServiceRole = createClient<Database>(
+      SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY,
+      {
+        auth: {
+          persistSession: false,
+          storage: {
+            getItem: () => Promise.resolve(null),
+            setItem: () => Promise.resolve(),
+            removeItem: () => Promise.resolve(),
+          },
+        },
+      }
+    );
 
-    const { data: option, error: optionError } = await serviceRoleClient
-      .from('options')
-      .insert({ poll_id: pollId, text: 'Option 1' })
-      .select()
-      .single();
-
-    if (optionError) {
-      throw optionError;
-    }
-    optionId = option.id;
+    // Clear all votes before running tests
+    await supabaseServiceRole.from('votes').delete().neq('id', '0');
   });
 
-  afterAll(async () => {
-    await serviceRoleClient.from('votes').delete().neq('id', '0');
-    await serviceRoleClient.from('options').delete().neq('id', '0');
-    await serviceRoleClient.from('polls').delete().neq('id', '0');
+  afterEach(async () => {
+    // Clear all votes after each test
+    await supabaseServiceRole.from('votes').delete().neq('id', '0');
   });
 
-  beforeEach(async () => {
-    await serviceRoleClient.from('votes').delete().neq('id', '0');
-  });
+  it('should insert a vote into the database', async () => {
+    const userId = 'test-user-id';
+    const pollOptionId = 'test-option-id';
 
-  test('should successfully insert a new vote into the database', async () => {
-    // No need to mock createServerActionClient or getSupabaseClient here
-    // as submitVote now handles user authentication internally.
+    await submitVote(userId, pollOptionId);
 
-    const result = await submitVote(optionId.toString(), pollId, 'dummy-user-id');
-
-    expect(result).toEqual({ success: true });
-
-    const { data: votes, error } = await serviceRoleClient.from('votes').select('*').eq('option_id', optionId).eq('poll_id', pollId);
+    const { data, error } = await supabaseServiceRole
+      .from('votes')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('option_id', pollOptionId);
 
     expect(error).toBeNull();
-    expect(votes).toHaveLength(1);
-    expect(votes![0].poll_id).toBe(pollId);
-    expect(votes![0].option_id).toBe(optionId);
-    // The user_id is now handled internally by submitVote, so we don't assert a specific ID here.
+    expect(data).toHaveLength(1);
+    expect(data![0].user_id).toBe(userId);
+    expect(data![0].option_id).toBe(pollOptionId);
   });
 });

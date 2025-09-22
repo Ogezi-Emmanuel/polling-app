@@ -6,11 +6,21 @@ import { updateUserRole } from '@/lib/actions/admin';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+interface UserListItem {
+  id: string;
+  email: string;
+  role: string;
+}
+
+function isCustomUser(user: any): user is CustomUser {
+  return user && typeof user.role === 'string';
+}
+
 export default async function AdminPage() {
   const supabase = await supabaseServerReadOnly();
   const { data: { user } } = await supabase.auth.getUser();
 
-  if (!user || (user as CustomUser).role !== 'admin') {
+  if (!user || !isCustomUser(user) || user.role !== 'admin') {
     redirect('/login'); // Redirect non-admin users
   }
 
@@ -27,7 +37,7 @@ export default async function AdminPage() {
       <p>This is where admin-specific functionalities will be managed.</p>
       <h2 className="text-2xl font-bold mt-8 mb-4">Manage Users</h2>
       <ul>
-        {users.map((u: any) => (
+        {users.map((u: UserListItem) => (
           <li key={u.id} className="flex justify-between items-center py-2 border-b">
             <span>{u.email}</span>
             <form action={async (formData) => {
