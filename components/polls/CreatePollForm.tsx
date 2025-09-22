@@ -19,6 +19,7 @@ export default function CreatePollForm({ userId }: { userId: string }) {
     options: z.array(z.object({
       text: z.string().min(1, { message: 'Option cannot be empty.' }),
     })).min(2, { message: 'Please add at least two options.' }),
+    closingDate: z.string().optional(), // Add closingDate to schema
   });
 
   type FormData = z.infer<typeof formSchema>;
@@ -28,6 +29,7 @@ export default function CreatePollForm({ userId }: { userId: string }) {
     defaultValues: {
       question: '',
       options: [{ text: '' }, { text: '' }],
+      closingDate: '',
     },
   });
 
@@ -44,7 +46,7 @@ export default function CreatePollForm({ userId }: { userId: string }) {
     setIsLoading(true);
     
     const optionsText = data.options.map(option => option.text);
-    const result = await createPoll(data.question, optionsText, userId);
+    const result = await createPoll(data.question, optionsText, data.closingDate || '');
 
     if ('error' in result) {
       console.error('Error creating poll:', result.error);
@@ -65,7 +67,7 @@ export default function CreatePollForm({ userId }: { userId: string }) {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="w-full max-w-md mx-auto">
       {isPollCreated && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert">
+        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded relative mb-4" role="alert" aria-live="assertive">
           <strong className="font-bold">Success!</strong>
           <span className="block sm:inline"> Poll created successfully!</span>
           {newPollId && (
@@ -87,8 +89,21 @@ export default function CreatePollForm({ userId }: { userId: string }) {
               id="question"
               placeholder="Enter your poll question"
               {...register('question')}
+              aria-invalid={errors.question ? "true" : "false"}
+              aria-describedby="question-error"
             />
-            {errors.question && <p className="text-red-500 text-sm">{errors.question.message}</p>}
+            {errors.question && <p id="question-error" className="text-red-500 text-sm">{errors.question.message}</p>}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="closingDate">Closing Date (Optional)</Label>
+            <Input
+              id="closingDate"
+              type="datetime-local"
+              {...register('closingDate')}
+              aria-invalid={errors.closingDate ? "true" : "false"}
+              aria-describedby="closingDate-error"
+            />
+            {errors.closingDate && <p id="closingDate-error" className="text-red-500 text-sm">{errors.closingDate.message}</p>}
           </div>
           <div className="space-y-2">
             <Label>Options</Label>
@@ -97,9 +112,12 @@ export default function CreatePollForm({ userId }: { userId: string }) {
                 <Input
                   placeholder={`Option ${index + 1}`}
                   {...register(`options.${index}.text`)}
+                  aria-invalid={errors.options?.[index]?.text ? "true" : "false"}
+                  aria-describedby={`option-${index}-error`}
                 />
+                {errors.options?.[index]?.text && <p id={`option-${index}-error`} className="text-red-500 text-sm">{errors.options[index]?.text?.message}</p>}
                 {index > 1 && (
-                  <Button type="button" variant="outline" size="icon" onClick={() => remove(index)} className="ml-2">
+                  <Button type="button" variant="outline" size="icon" onClick={() => remove(index)} className="ml-2" aria-label={`Remove option ${index + 1}`}>
                   X
                 </Button>
                 )}
@@ -111,14 +129,15 @@ export default function CreatePollForm({ userId }: { userId: string }) {
               onClick={() => append({ text: '' })}
               className="w-full"
               disabled={fields.length >= 5}
+              aria-disabled={fields.length >= 5}
             >
               Add Option
             </Button>
-            {errors.options && <p className="text-red-500 text-sm">{errors.options.message}</p>}
+            {errors.options && <p id="options-error" className="text-red-500 text-sm">{errors.options.message}</p>}
           </div>
         </CardContent>
         <CardFooter>
-          <Button type="submit" className="w-full" disabled={isLoading}>
+          <Button type="submit" className="w-full" disabled={isLoading} aria-disabled={isLoading}>
             {isLoading ? 'Creating...' : 'Create Poll'}
           </Button>
         </CardFooter>

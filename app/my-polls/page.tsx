@@ -49,7 +49,11 @@ export default async function MyPollsPage({ searchParams }: PageProps) {
   const currentPage = parseInt(searchParams.page || '1');
   const pageSize = 10;
 
-  const { polls, totalCount } = await PollsService.getPollsByUserId(user.id, currentPage, pageSize);
+  const { polls, totalCount } = await PollsService.getPollsByUserId(
+    user.id,
+    currentPage,
+    pageSize,
+  );
 
   if (!polls) {
     console.error('Error fetching polls');
@@ -70,15 +74,7 @@ export default async function MyPollsPage({ searchParams }: PageProps) {
         <>
           <div className="grid gap-6 mb-8">
             {polls.map((poll: any) => (
-              <PollCard key={poll.id} poll={poll} onDelete={async (pollId) => {
-                try {
-                  await handleDelete(pollId);
-                  window.location.reload();
-                } catch (error) {
-                  console.error('Failed to delete poll:', error);
-                  alert('Failed to delete poll. Please try again.');
-                }
-              }} />
+              <PollCard key={poll.id} poll={poll} />
             ))}
           </div>
           
@@ -88,6 +84,7 @@ export default async function MyPollsPage({ searchParams }: PageProps) {
                 <a
                   href={`/my-polls?page=${currentPage - 1}`}
                   className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                  aria-label="Go to previous page"
                 >
                   Previous
                 </a>
@@ -101,6 +98,7 @@ export default async function MyPollsPage({ searchParams }: PageProps) {
                 <a
                   href={`/my-polls?page=${currentPage + 1}`}
                   className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
+                  aria-label="Go to next page"
                 >
                   Next
                 </a>

@@ -30,8 +30,8 @@ export function SharePollCard({ pollQuestion, shareUrl }: SharePollCardProps) {
       </CardHeader>
       <CardContent className="flex flex-col items-center space-y-4">
         <div className="w-full flex items-center space-x-2">
-          <Input value={shareUrl} readOnly />
-          <Button onClick={handleCopy}>{copied ? 'Copied!' : 'Copy'}</Button>
+          <Input value={shareUrl} readOnly aria-label="Poll share URL" />
+          <Button onClick={handleCopy} aria-live="polite">{copied ? 'Copied!' : 'Copy'}</Button>
         </div>
         {shareUrl && (
           <div className="p-4 border border-gray-200 rounded-md">

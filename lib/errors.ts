@@ -42,6 +42,12 @@ export class AuthorizationError extends AppError {
   }
 }
 
+export class EmailError extends AppError {
+  constructor(message: string = 'Email operation failed') {
+    super(message, 500);
+  }
+}
+
 export interface ErrorResponse {
   error: {
     message: string;

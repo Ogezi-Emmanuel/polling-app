@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { submitVote } from '@/lib/votes'; // Import the server action
 
 interface Option {
   id: string;
@@ -23,12 +24,18 @@ export default function VoteForm({ poll, pollId }: { poll: PollData; pollId: str
   // In a real application, you would fetch poll data based on pollId
 
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedOption) {
-      // In a real application, you would submit the vote to your backend
-      console.log(`Voted for option: ${selectedOption} in poll: ${pollId}`);
-      setHasVoted(true);
+      const result = await submitVote(selectedOption, pollId);
+
+      if (result.success) {
+        router.push(`/poll/${pollId}/thank-you`);
+      } else {
+        // Handle error, e.g., display an error message to the user
+        console.error('Error submitting vote:', result.error);
+        // You might want to set a state variable here to display an error message in the UI
+      }
     }
   };
 

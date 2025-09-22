@@ -1,93 +1,69 @@
-import { getSupabaseClient } from '@/lib/supabase';
-import { DatabaseError } from '@/lib/errors';
+import { createClient } from '@/lib/supabase/client';
+import { TablesInsert } from '@/lib/database.types';
 
-export class VotesService {
-  static async submitVote(optionId: string, pollId: string): Promise<void> {
-    try {
-      const supabase = await getSupabaseClient();
-      
-      const { error } = await supabase
-        .from('votes')
-        .insert({ option_id: optionId, poll_id: pollId });
+export async function submitVote(optionId: string, pollId: string, userId: string) {
+  const supabase = createClient();
 
-      if (error) {
-        throw new DatabaseError('Failed to submit vote');
-      }
-    } catch (error) {
-      console.error('Error submitting vote:', error);
-      throw new DatabaseError('Failed to submit vote');
-    }
+  const vote: TablesInsert<'votes'> = {
+    option_id: optionId,
+    poll_id: pollId,
+    user_id: userId,
+  };
+
+  const { data, error } = await supabase
+    .from('votes')
+    .insert(vote)
+    .select();
+
+  if (error) {
+    throw new Error(error.message);
   }
 
-  static async hasUserVoted(pollId: string, userId: string): Promise<boolean> {
-    try {
-      const supabase = await getSupabaseClient();
-      
-      const { data: options } = await supabase
-        .from('poll_options')
-        .select('id')
-        .eq('poll_id', pollId);
+  // Increment vote count for the option
+  const { error: rpcError } = await supabase.rpc(
+    'increment_vote_count' as 'increment_vote_count',
+    { option_id: optionId }
+  );
 
-      if (!options || options.length === 0) {
-        return false;
-      }
-
-      const optionIds = options.map(option => option.id);
-      
-      const { data: vote, error } = await supabase
-        .from('votes')
-        .select('*')
-        .in('option_id', optionIds)
-        .eq('user_id', userId)
-        .maybeSingle();
-
-      if (error) {
-        throw new DatabaseError('Failed to check user vote');
-      }
-
-      return !!vote;
-    } catch (error) {
-      console.error('Error checking user vote:', error);
-      throw new DatabaseError('Failed to check user vote');
-    }
+  if (rpcError) {
+    throw new Error(rpcError.message);
   }
 
-  static async getVoteCountsForPoll(pollId: string): Promise<Record<string, number>> {
-    try {
-      const supabase = await getSupabaseClient();
-      
-      const { data: options, error: optionsError } = await supabase
-        .from('poll_options')
-        .select('id')
-        .eq('poll_id', pollId);
+  return data;
+}
 
-      if (optionsError) {
-        throw new DatabaseError('Failed to fetch poll options');
-      }
+export async function hasUserVoted(pollId: string, userId: string): Promise<boolean> {
+  const supabase = createClient();
+  const { data, error } = await supabase
+    .from('votes')
+    .select('id')
+    .eq('poll_id', pollId)
+    .eq('user_id', userId)
+    .single();
 
-      if (!options || options.length === 0) {
-        return {};
-      }
-
-      const voteCounts: Record<string, number> = {};
-      
-      for (const option of options) {
-        const { count, error: voteError } = await supabase
-          .from('votes')
-          .select('*', { count: 'exact' })
-          .eq('option_id', option.id);
-
-        if (voteError) {
-          throw new DatabaseError('Failed to fetch vote counts');
-        }
-
-        voteCounts[option.id] = count || 0;
-      }
-
-      return voteCounts;
-    } catch (error) {
-      console.error('Error fetching vote counts:', error);
-      throw new DatabaseError('Failed to fetch vote counts');
-    }
+  if (error && error.code !== 'PGRST116') { // PGRST116 means no rows found
+    throw new Error(error.message);
   }
+
+  return !!data;
+}
+
+export async function getVoteCountsForPoll(pollId: string): Promise<Record<string, number>> {
+  const supabase = createClient();
+
+  const { data: poll_options, error } = await supabase
+    .from('poll_options')
+    .select('id, votes')
+    .eq('poll_id', pollId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const formattedVoteCounts = poll_options.reduce((acc: Record<string, number>, option) => {
+    acc[option.id] = option.votes || 0;
+    return acc;
+  }, {} as Record<string, number>);
+
+  return formattedVoteCounts;
 }

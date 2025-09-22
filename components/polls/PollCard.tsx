@@ -34,7 +34,7 @@ export default function PollCard({ poll }: PollCardProps) {
         <Link href={`/poll/${poll.id}/edit`}>
           <Button variant="outline">Edit</Button>
         </Link>
-        <Button variant="destructive" onClick={handleDelete}>
+        <Button variant="destructive" onClick={handleDelete} aria-label={`Delete poll: ${poll.question}`}>
           Delete
         </Button>
       </CardFooter>

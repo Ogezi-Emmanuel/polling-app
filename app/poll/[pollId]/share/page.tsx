@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation';
 import { supabaseServerReadOnly } from '@/lib/supabase/server';
 import { SharePollCard } from '@/components/polls/SharePollCard';
 import { generateShareablePollUrl } from '@/lib/utils';
+import QRCodeDisplay from '@/components/ui/qr-code-display';
 
 interface SharePollPageProps {
   params: { pollId: string };
@@ -40,6 +41,9 @@ export default async function SharePollPage({ params: { pollId } }: SharePollPag
     <div className="flex flex-col items-center justify-center min-h-screen py-2">
       <h1 className="text-2xl font-bold mb-4">Share Your Poll</h1>
       <SharePollCard pollQuestion={poll.question} shareUrl={shareUrl} />
+      <div className="mt-8">
+        <QRCodeDisplay value={shareUrl} size={200} />
+      </div>
     </div>
   );
 }

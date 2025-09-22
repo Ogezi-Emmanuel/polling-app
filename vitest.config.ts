@@ -5,12 +5,9 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   test: {
-    include: ['lib/**/*.integration.test.ts'],
+    environment: 'jsdom',
     setupFiles: ['./vitest.setup.ts'],
-    environment: 'node',
-    // You might need to adjust the timeout for integration tests
-    testTimeout: 30000,
-    hookTimeout: 30000,
+    globals: true,
   },
   resolve: {
     alias: {

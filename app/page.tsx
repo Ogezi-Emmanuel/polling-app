@@ -10,10 +10,10 @@ export default function HomePage() {
       </p>
       <div className="flex space-x-4">
         <Button asChild size="lg">
-          <Link href="/signup">Get Started</Link>
+          <Link href="/signup" aria-label="Get started by signing up">Get Started</Link>
         </Button>
         <Button asChild size="lg" variant="outline">
-          <Link href="/login">Login</Link>
+          <Link href="/login" aria-label="Log in to your account">Login</Link>
         </Button>
       </div>
     </div>

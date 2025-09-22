@@ -3,6 +3,11 @@
 import { createBrowserClient } from '@supabase/ssr'
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { User } from '@supabase/supabase-js'
+
+export interface CustomUser extends User {
+  role?: string;
+}
 
 export async function getSupabaseClient(context: 'client' | 'server' = 'client') {
   if (context === 'server') {
@@ -34,10 +39,11 @@ export async function getSupabaseClient(context: 'client' | 'server' = 'client')
 export async function getSupabaseClientAuto() {
   // Check if we're in a server context by trying to access cookies
   try {
-    await cookies()
-    return await getSupabaseClient('server')
+    const supabase = await getSupabaseClient('server');
+    const { data: { user } } = await supabase.auth.getUser();
+    return supabase;
   } catch {
     // If cookies() throws, we're in a client context
-    return await getSupabaseClient('client')
+    return await getSupabaseClient('client');
   }
 }
